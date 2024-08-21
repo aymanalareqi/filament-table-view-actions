@@ -12,6 +12,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Livewire\Component;
 use phpDocumentor\Reflection\Types\Null_;
@@ -54,12 +55,59 @@ class TableViewComponent extends Component implements HasForms, HasTable
     public function table(Table $table): Table
     {
         $_table = $table
-
             ->relationship(fn(): Relation | Builder | null => $this->modalTableRelationship)
             ->query($this->modalTableQuery)
             ->columns($this->modalTableColumns)
             ->filters($this->modalTableFilters)
-            ->recordAction($this->modalTableActions)
+            ->actions($this->modalTableActions)
+            ->recordAction(function (Model $record, Table $table): ?string {
+                foreach (['view', 'edit'] as $action) {
+                    $action = $table->getAction($action);
+
+                    if (! $action) {
+                        continue;
+                    }
+
+                    $action->record($record);
+
+                    if ($action->isHidden()) {
+                        continue;
+                    }
+
+                    if ($action->getUrl()) {
+                        continue;
+                    }
+
+                    return $action->getName();
+                }
+
+                return null;
+            })
+            ->recordUrl(function (Model $record, Table $table): ?string {
+                foreach (['view', 'edit'] as $action) {
+                    $action = $table->getAction($action);
+
+                    if (! $action) {
+                        continue;
+                    }
+
+                    $action->record($record);
+
+                    if ($action->isHidden()) {
+                        continue;
+                    }
+
+                    $url = $action->getUrl();
+
+                    if (! $url) {
+                        continue;
+                    }
+
+                    return $url;
+                }
+
+                return null;
+            })
             ->bulkActions($this->modalTableBulkActions);
         if ($this->modelModifyQueryUsing !== null) {
             $_table = $_table->modifyQueryUsing($this->modelModifyQueryUsing);
