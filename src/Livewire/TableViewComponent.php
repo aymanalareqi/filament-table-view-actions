@@ -7,7 +7,11 @@ use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
+use Filament\Tables\Actions\Action as TableAction;
+use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
@@ -27,6 +31,8 @@ class TableViewComponent extends Component implements HasForms, HasTable
         configureAction as configureActionRecord;
     }
 
+    protected TableAction $ownerAction;
+
     protected array $modalTableColumns = [];
 
     protected array $modalTableActions = [];
@@ -39,6 +45,8 @@ class TableViewComponent extends Component implements HasForms, HasTable
 
     protected Closure | null $modelModifyQueryUsing = null;
 
+    protected Closure | null $modalTable = null;
+
     protected Relation | Builder | null $modalTableRelationship = null;
 
     public function mount($actionData)
@@ -50,13 +58,14 @@ class TableViewComponent extends Component implements HasForms, HasTable
         $this->modalTableQuery = $actionData['tableQuery'] ?? null;
         $this->modalTableRelationship = $actionData['tableRelationship'] ?? null;
         $this->modelModifyQueryUsing = $actionData['modifyQueryUsing'] ?? null;
+        $this->ownerAction = $actionData['ownerAction'];
     }
 
     public function table(Table $table): Table
     {
         $_table = $table
             ->relationship(fn(): Relation | Builder | null => $this->modalTableRelationship)
-            ->query($this->modalTableQuery)
+            ->query(fn(): Relation | Builder | null => $this->modalTableQuery)
             ->columns($this->modalTableColumns)
             ->filters($this->modalTableFilters)
             ->actions($this->modalTableActions)
@@ -117,6 +126,20 @@ class TableViewComponent extends Component implements HasForms, HasTable
     protected function configureAction(Action $action): void
     {
         $this->configureActionRecord($action);
+    }
+    protected function configureTableAction(TableAction $action): void
+    {
+        match (true) {
+
+            $action instanceof ViewAction => $this->configureViewAction($action),
+            default => null,
+        };
+    }
+    protected function configureViewAction(ViewAction $action): void
+    {
+        $action
+            ->infolist(fn(Infolist $infolist): Infolist => $this->ownerAction->getInfolist())
+            ->form(fn(Form $form): Form => $this->ownerAction->getForm($form));
     }
     public function render()
     {

@@ -3,6 +3,9 @@
 namespace Alareqi\TableViewActions\Actions\Concerns;
 
 use Closure;
+use Filament\Forms\Components\ViewField;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,6 +24,8 @@ trait HasModalTable
 
     protected Closure | null $modifyQuerUsing = null;
 
+    protected Closure | null $modalTable = null;
+
     protected string | Closure | null $relationshipName = null;
 
     protected array | Closure | null $tableFilters = null;
@@ -34,6 +39,17 @@ trait HasModalTable
     {
         parent::setUp();
         $this->icon('heroicon-s-table-cells');
+    }
+
+    public function modalTable(Closure $table): static
+    {
+        $this->modalTable = $table;
+        return $this;
+    }
+
+    public function getModalTable(): ?Closure
+    {
+        return $this->modalTable;
     }
 
     public function tableQuery(Builder| Closure $query): static
@@ -81,7 +97,17 @@ trait HasModalTable
     public function tableBulkActions(array | Closure $bulkActions): static
     {
         $this->tableBulkActions = $bulkActions;
+
         return $this;
+    }
+    public function getForm(Form $form): ?Form
+    {
+        return $form
+            ->schema([
+                ViewField::make('table-view-actions::table-view-component')
+                    ->view('table-view-actions::table-view')
+                    ->viewData(["actionData" => $this->getActionData()]),
+            ]);
     }
 
 
@@ -114,13 +140,10 @@ trait HasModalTable
     public function tableColumns(array | Closure $columns): static
     {
         $this->tableColumns = $columns;
+
         return $this;
     }
 
-    public function getModalContent(): View | Htmlable | null
-    {
-        return view('table-view-actions::table-view', ["actionData" => $this->getActionData()]);
-    }
     public function getModalFooterActions(): array
     {
         return [];
@@ -146,6 +169,7 @@ trait HasModalTable
 
     public function getActionData(): array
     {
+
         return [
             'tableColumns' => $this->getTableColumns(),
             'tableQuery' => $this->getTableQuery(),
@@ -154,6 +178,8 @@ trait HasModalTable
             'tableActions' => $this->getTableActions(),
             'tableBulkActions' => $this->getTableBulkActions(),
             'tableFilters' => $this->getTableFilters(),
+            'modalTable' => $this->getModalTable(),
+            'ownerAction' => $this,
         ];
     }
 }
